@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}The Mubi 1000{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="{{ url_for('.static', filename='styles.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-900 text-gray-100" data-api-base="{{ url_for('.index') }}">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-8">
+            {% block header %}
+            <h1 class="text-4xl font-bold text-gray-100 mb-2">{% block heading %}The Mubi 1000{% endblock %}</h1>
+            <p class="text-gray-400">{% block subheading %}Explore the greatest films ever made{% endblock %}</p>
+            {% endblock %}
+        </header>
+
+        <!-- Navigation -->
+        <nav class="bg-gray-800 rounded-lg shadow-md p-4 mb-8">
+            <div class="flex flex-wrap gap-2">
+                {% set nav_items = [
+                    ('movies', '.index', 'Movie List'),
+                    ('stats', '.stats_page', 'Statistics'),
+                    ('directors', '.directors_list_page', 'Directors'),
+                    ('countries', '.countries_list_page', 'Countries'),
+                    ('changes', '.changes_page', 'Changes'),
+                ] %}
+                {% for key, endpoint, label in nav_items %}
+                    {% if active_nav == key %}
+                        <a href="{{ url_for(endpoint) }}" class="px-4 py-2 bg-blue-600 text-white rounded-md">{{ label }}</a>
+                    {% else %}
+                        <a href="{{ url_for(endpoint) }}" class="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition">{{ label }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% block nav_extra %}{% endblock %}
+            </div>
+        </nav>
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('.static', filename='app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

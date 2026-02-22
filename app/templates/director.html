@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% set active_nav = "directors" %}
+
+{% block title %}{{ director_name }} - The Mubi 1000{% endblock %}
+
+{% block header %}
+    <p class="text-gray-400 mb-1">Director</p>
+    <h1 class="text-4xl font-bold text-gray-100 mb-2">{{ director_name }}</h1>
+{% endblock %}
+
+{% block content %}
+    <!-- Loading -->
+    <div id="loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-400">Loading movies...</p>
+    </div>
+
+    <!-- Movies List -->
+    <section id="moviesContent" class="bg-gray-800 rounded-lg shadow-md p-6 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-100"><span id="movieCount">0</span> films in the Top 1000</h2>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center cursor-pointer">
+                    <input type="checkbox" id="hideWatchedToggle" class="mr-2">
+                    <span class="text-sm text-gray-300">Hide watched</span>
+                </label>
+            </div>
+        </div>
+        <div id="moviesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </section>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const directorName = {{ director_name | tojson }};
+    let allMovies = [];
+
+    async function loadMovies() {
+        try {
+            const movies = await apiFetch(`${BASE}/api/movies?director=${encodeURIComponent(directorName)}`);
+
+            allMovies = movies;
+            displayMovies(movies);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('moviesContent').classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Error loading movies:', error);
+            alert(error.message);
+        }
+    }
+
+    function displayMovies(movies) {
+        const container = document.getElementById('moviesContainer');
+        const hideWatched = document.getElementById('hideWatchedToggle').checked;
+
+        let filtered = hideWatched ? movies.filter(m => !m.watched) : movies;
+        document.getElementById('movieCount').textContent = filtered.length;
+
+        container.innerHTML = filtered.map(movie => createMovieCardHTML(movie, { showDirector: false })).join('');
+    }
+
+    document.getElementById('hideWatchedToggle').addEventListener('change', function() {
+        displayMovies(allMovies);
+    });
+
+    document.addEventListener('DOMContentLoaded', loadMovies);
+</script>
+{% endblock %}

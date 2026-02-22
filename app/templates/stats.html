@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% set active_nav = "stats" %}
+
+{% block title %}Statistics - The Mubi 1000{% endblock %}
+{% block heading %}Statistics Dashboard{% endblock %}
+{% block subheading %}Insights into the Mubi 1000{% endblock %}
+
+{% block content %}
+    <!-- Loading -->
+    <div id="loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-400">Loading statistics...</p>
+    </div>
+
+    <!-- Stats Content -->
+    <div id="statsContent" class="hidden">
+        <!-- Progress Overview -->
+        <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-6 text-gray-100">Your Progress</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-3xl font-bold text-blue-400" id="totalMovies">0</div>
+                    <div class="text-gray-400">Total Movies</div>
+                </div>
+                <div class="stat-card bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-3xl font-bold text-green-400" id="watchedCount">0</div>
+                    <div class="text-gray-400">Watched</div>
+                </div>
+                <div class="stat-card bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-3xl font-bold text-orange-400" id="unwatchedCount">0</div>
+                    <div class="text-gray-400">Remaining</div>
+                </div>
+                <div class="stat-card bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-3xl font-bold text-purple-400" id="watchedPercentage">0%</div>
+                    <div class="text-gray-400">Complete</div>
+                </div>
+            </div>
+            <!-- Progress bar -->
+            <div class="w-full bg-gray-700 rounded-full h-4">
+                <div id="progressBar" class="bar bg-green-500 h-4 rounded-full" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <!-- Year Statistics -->
+        <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-100">Year Statistics</h2>
+            <div id="yearStatsGrid" class="grid grid-cols-1 md:grid-cols-4 gap-4"></div>
+        </section>
+
+        <!-- Decade Distribution -->
+        <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-100">Movies by Decade</h2>
+            <div id="decadeChart" class="space-y-3"></div>
+        </section>
+
+        <!-- Top Directors -->
+        <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-100">Top Directors</h2>
+                <a href="{{ url_for('.directors_list_page') }}" class="text-blue-400 hover:text-blue-300">View All</a>
+            </div>
+            <div id="directorsChart" class="space-y-2"></div>
+        </section>
+
+        <!-- Top Countries -->
+        <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-100">Top Countries</h2>
+                <a href="{{ url_for('.countries_list_page') }}" class="text-blue-400 hover:text-blue-300">View All</a>
+            </div>
+            <div id="countriesChart" class="space-y-2"></div>
+        </section>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadStats() {
+        try {
+            const stats = await apiFetch(BASE + '/api/stats');
+
+            document.getElementById('totalMovies').textContent = stats.total_movies;
+            document.getElementById('watchedCount').textContent = stats.watched_count;
+            document.getElementById('unwatchedCount').textContent = stats.unwatched_count;
+            document.getElementById('watchedPercentage').textContent = stats.watched_percentage + '%';
+            document.getElementById('progressBar').style.width = stats.watched_percentage + '%';
+
+            renderYearStats(stats);
+
+            renderDecadeChart(stats.decade_distribution, stats.watched_by_decade);
+            renderBarChart('directorsChart', stats.director_distribution.slice(0, 15), stats.total_movies, BASE + '/director/', stats.watched_by_director);
+            renderBarChart('countriesChart', stats.country_distribution.slice(0, 15), stats.total_movies, BASE + '/country/', stats.watched_by_country);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('statsContent').classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Error loading stats:', error);
+            alert(error.message);
+        }
+    }
+
+    function renderYearStats(stats) {
+        const grid = document.getElementById('yearStatsGrid');
+        const avg = stats.avg_year;
+        const med = stats.median_year;
+
+        const oldest = { value: stats.oldest_year, label: 'Oldest Film' };
+        const average = { value: avg, label: 'Average Year' };
+        const median = { value: med, label: 'Median Year' };
+        const newest = { value: stats.newest_year, label: 'Newest Film' };
+
+        const middle = (med != null && avg != null && med <= avg)
+            ? [median, average]
+            : [average, median];
+
+        const colors = ['text-blue-400', 'text-green-400', 'text-orange-400', 'text-purple-400'];
+        const cards = [oldest, ...middle, newest];
+
+        grid.innerHTML = cards.map((c, i) => `
+            <div class="stat-card bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold ${colors[i]}">${c.value || '-'}</div>
+                <div class="text-gray-400">${c.label}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderDecadeChart(decades, watchedByDecade) {
+        const container = document.getElementById('decadeChart');
+        const maxCount = Math.max(...decades.map(d => d[1]));
+        const watchedMap = Object.fromEntries(watchedByDecade || []);
+
+        container.className = 'grid gap-x-4 gap-y-3 items-center';
+        container.style.gridTemplateColumns = 'auto 1fr auto auto';
+
+        container.innerHTML = decades.map(([decade, count]) => {
+            const percentage = (count / maxCount) * 100;
+            const watched = watchedMap[decade] || 0;
+
+            return `
+                <div class="text-right text-gray-400 font-mono">${decade}</div>
+                <div class="relative">
+                    <div class="w-full bg-gray-700 rounded h-6">
+                        <div class="bar bg-blue-600 h-6 rounded" style="width: ${percentage}%"></div>
+                    </div>
+                    ${watched > 0 ? `
+                        <div class="absolute top-0 left-0 h-6">
+                            <div class="bar bg-green-500 h-6 rounded-l" style="width: ${(watched / maxCount) * 100}%"></div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="text-right text-gray-300 whitespace-nowrap">${count} films</div>
+                <div class="text-right text-gray-500 text-sm whitespace-nowrap">${watched}/${count} watched</div>
+            `;
+        }).join('');
+    }
+
+    function renderBarChart(containerId, data, total, linkPrefix, watchedData) {
+        const container = document.getElementById(containerId);
+        const maxCount = data.length > 0 ? data[0][1] : 1;
+        const watchedMap = Object.fromEntries(watchedData || []);
+
+        container.className = 'grid gap-x-4 gap-y-2 items-center';
+        container.style.gridTemplateColumns = 'auto 1fr auto auto';
+
+        container.innerHTML = data.map(([name, count]) => {
+            const percentage = (count / maxCount) * 100;
+            const href = linkPrefix + encodeURIComponent(name);
+            const watched = watchedMap[name] || 0;
+
+            return `
+                <a href="${href}" class="truncate text-gray-300 hover:text-white transition">${name}</a>
+                <div class="relative">
+                    <div class="w-full bg-gray-700 rounded h-4">
+                        <div class="bar bg-purple-600 h-4 rounded" style="width: ${percentage}%"></div>
+                    </div>
+                    ${watched > 0 ? `
+                        <div class="absolute top-0 left-0 h-4">
+                            <div class="bar bg-green-500 h-4 rounded-l" style="width: ${(watched / maxCount) * 100}%"></div>
+                        </div>
+                    ` : ''}
+                </div>
+                <a href="${href}" class="text-right text-gray-400 whitespace-nowrap hover:text-white transition">${count} films</a>
+                <div class="text-right text-gray-500 text-sm whitespace-nowrap">${watched}/${count} watched</div>
+            `;
+        }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadStats);
+</script>
+{% endblock %}

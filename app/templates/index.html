@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% set active_nav = "movies" %}
+
+{% block content %}
+    <!-- Controls -->
+    <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+        <!-- Search Row -->
+        <div class="flex gap-4 mb-6">
+            <!-- Search -->
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Search Movies</label>
+                <div class="flex gap-2">
+                    <input type="text" id="searchInput"
+                           class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100"
+                           placeholder="Search by title, director, country, or year...">
+                    <button onclick="loadMovies()"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                        Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="border-t border-gray-700 pt-4 mb-6">
+            <label class="block text-sm font-medium text-gray-300 mb-3">Filter by...</label>
+        </div>
+        <div class="flex flex-wrap gap-4 items-end mb-6">
+            <div class="flex-1 min-w-[120px]">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Decade</label>
+                <select id="decadeFilter"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                    <option value="">All Decades</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[120px]">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Country</label>
+                <select id="countryFilter"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                    <option value="">All Countries</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[120px]">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Director</label>
+                <select id="directorFilter"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                    <option value="">All Directors</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[120px]">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Streaming</label>
+                <select id="streamingFilter"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                    <option value="">All Movies</option>
+                    <option value="__my__">My Services</option>
+                </select>
+            </div>
+            <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
+                <input type="checkbox" id="hideWatchedToggle" class="mr-2 w-4 h-4">
+                <span class="text-base text-gray-300">Unwatched</span>
+            </label>
+        </div>
+
+        <!-- My Services Configuration -->
+        <div class="border-t border-gray-700 pt-4 mb-6">
+            <button onclick="toggleMyServicesPanel()" class="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-gray-100 transition mb-3">
+                <span id="myServicesCaret" class="inline-block transition-transform duration-200" style="border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;width:0;height:0"></span>
+                My Streaming Services
+            </button>
+            <div id="myServicesPanel" class="hidden">
+                <div id="myServicesCheckboxes" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Surprise Me / Reset -->
+        <div class="border-t border-gray-700 pt-6 flex justify-between items-center">
+            <button onclick="surpriseMe()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                Surprise Me
+            </button>
+            <button onclick="resetFilters()"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition">
+                Reset All
+            </button>
+        </div>
+    </section>
+
+    <!-- Random Movie Display -->
+    <section id="randomMovieSection" class="bg-gray-800 rounded-lg shadow-md p-6 mb-8" style="display: none;">
+        <h2 class="text-2xl font-bold mb-4 text-gray-100">Random Movie</h2>
+        <div id="randomMovieContent"></div>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-400">Loading...</p>
+    </div>
+
+    <!-- Movie List -->
+    <section id="movieList" class="bg-gray-800 rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-100">Top 1000 Movies</h2>
+            <div class="text-sm text-gray-400">
+                <span id="movieCount">0</span> movies
+                <span id="watchedCount" class="ml-4"></span>
+            </div>
+        </div>
+
+        <div id="moviesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentMovies = [];
+    let filterOptions = { decades: [], countries: [], directors: [], streaming_services: [] };
+    let initialLoadDone = false;
+
+    const FILTER_KEY = 'mubi_filters';
+    const FILTER_VERSION = 1;
+
+    function saveFilters() {
+        const state = {
+            v:           FILTER_VERSION,
+            q:           document.getElementById('searchInput').value,
+            hideWatched: document.getElementById('hideWatchedToggle').checked,
+            streaming:   document.getElementById('streamingFilter').value,
+            decade:      document.getElementById('decadeFilter').value,
+            country:     document.getElementById('countryFilter').value,
+            director:    document.getElementById('directorFilter').value,
+        };
+        localStorage.setItem(FILTER_KEY, JSON.stringify(state));
+    }
+
+    function restoreFilters() {
+        try {
+            const state = JSON.parse(localStorage.getItem(FILTER_KEY));
+            if (!state) return;
+            if (state.v !== FILTER_VERSION) {
+                localStorage.removeItem(FILTER_KEY);
+                return;
+            }
+            if (state.q)           document.getElementById('searchInput').value = state.q;
+            if (state.hideWatched) document.getElementById('hideWatchedToggle').checked = true;
+            if (state.streaming)   document.getElementById('streamingFilter').value = state.streaming;
+            if (state.decade)      document.getElementById('decadeFilter').value = state.decade;
+            if (state.country)     document.getElementById('countryFilter').value = state.country;
+            if (state.director)    document.getElementById('directorFilter').value = state.director;
+        } catch (e) { /* ignore corrupt data */ }
+    }
+
+    function showLoading() {
+        document.getElementById('loading').classList.add('active');
+    }
+
+    function hideLoading() {
+        document.getElementById('loading').classList.remove('active');
+    }
+
+    async function loadFilterOptions() {
+        try {
+            const response = await fetch(BASE + '/api/filter-options');
+            filterOptions = await response.json();
+
+            const decadeSelect = document.getElementById('decadeFilter');
+            filterOptions.decades.forEach(decade => {
+                const option = document.createElement('option');
+                option.value = decade;
+                option.textContent = decade;
+                decadeSelect.appendChild(option);
+            });
+
+            const countrySelect = document.getElementById('countryFilter');
+            filterOptions.countries.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.name;
+                option.textContent = `${c.name} (${c.count})`;
+                countrySelect.appendChild(option);
+            });
+
+            const directorSelect = document.getElementById('directorFilter');
+            filterOptions.directors.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.name;
+                option.textContent = `${d.name} (${d.count})`;
+                directorSelect.appendChild(option);
+            });
+
+            const streamingSelect = document.getElementById('streamingFilter');
+            if (filterOptions.streaming_services) {
+                filterOptions.streaming_services.forEach(s => {
+                    const option = document.createElement('option');
+                    option.value = s.technical_name;
+                    option.textContent = `${s.name} (${s.count})`;
+                    streamingSelect.appendChild(option);
+                });
+            }
+
+        } catch (error) {
+            console.error('Error loading filter options:', error);
+        }
+    }
+
+    let myServices = new Set();
+
+    async function loadMyServices() {
+        try {
+            const services = await apiFetch(BASE + '/api/my-services');
+            myServices = new Set(services);
+        } catch (error) {
+            console.error('Error loading my services:', error);
+        }
+    }
+
+    function renderMyServicesPanel() {
+        const container = document.getElementById('myServicesCheckboxes');
+        if (!filterOptions.streaming_services || filterOptions.streaming_services.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">No streaming data available. Run <code>python main.py streaming</code> first.</p>';
+            return;
+        }
+        const groups = {};
+        const groupLabels = { FLATRATE: 'Subscription', FREE: 'Free' };
+        filterOptions.streaming_services.forEach(s => {
+            const type = s.monetization_type || 'FLATRATE';
+            if (!groups[type]) groups[type] = [];
+            groups[type].push(s);
+        });
+        const order = ['FLATRATE', 'FREE'];
+        let html = '';
+        for (const type of order) {
+            if (!groups[type] || groups[type].length === 0) continue;
+            html += `<h4 class="col-span-full text-sm font-medium text-gray-400 mt-2 mb-1">${groupLabels[type] || type}</h4>`;
+            html += groups[type].map(s => `
+                <label class="flex items-center cursor-pointer text-sm text-gray-300">
+                    <input type="checkbox" class="mr-2 w-4 h-4" value="${s.technical_name}"
+                           ${myServices.has(s.technical_name) ? 'checked' : ''}>
+                    ${s.name}
+                </label>
+            `).join('');
+        }
+        container.innerHTML = html;
+        container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', onMyServiceToggled);
+        });
+    }
+
+    async function onMyServiceToggled() {
+        const checkboxes = document.querySelectorAll('#myServicesCheckboxes input[type="checkbox"]');
+        const selected = [];
+        checkboxes.forEach(cb => { if (cb.checked) selected.push(cb.value); });
+        myServices = new Set(selected);
+        try {
+            await fetch(BASE + '/api/my-services', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ services: selected }),
+            });
+            const streaming = document.getElementById('streamingFilter').value;
+            if (streaming === '__my__') loadMovies();
+        } catch (error) {
+            console.error('Error saving my services:', error);
+        }
+    }
+
+    function toggleMyServicesPanel() {
+        const panel = document.getElementById('myServicesPanel');
+        const caret = document.getElementById('myServicesCaret');
+        const isHidden = panel.classList.toggle('hidden');
+        caret.style.transform = isHidden ? '' : 'rotate(90deg)';
+        if (!isHidden) renderMyServicesPanel();
+    }
+
+    function updateFilterHighlights() {
+        const selects = ['decadeFilter', 'countryFilter', 'directorFilter', 'streamingFilter'];
+        selects.forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.toggle('filter-active', el.value !== '');
+        });
+        const cb = document.getElementById('hideWatchedToggle');
+        cb.closest('label').classList.toggle('filter-active', cb.checked);
+        const search = document.getElementById('searchInput');
+        search.classList.toggle('filter-active', search.value.trim() !== '');
+    }
+
+    function buildFilterParams() {
+        const params = new URLSearchParams();
+
+        const query = document.getElementById('searchInput').value.trim();
+        if (query) params.append('q', query);
+
+        const hideWatched = document.getElementById('hideWatchedToggle').checked;
+        if (hideWatched) params.append('hide_watched', 'true');
+
+        const streaming = document.getElementById('streamingFilter').value;
+        if (streaming) params.append('streaming_service', streaming);
+
+        const decade = document.getElementById('decadeFilter').value;
+        if (decade) params.append('decade', decade);
+
+        const country = document.getElementById('countryFilter').value;
+        if (country) params.append('country', country);
+
+        const director = document.getElementById('directorFilter').value;
+        if (director) params.append('director', director);
+
+        return params.toString();
+    }
+
+    async function loadMovies() {
+        saveFilters();
+        updateFilterHighlights();
+        if (!initialLoadDone) showLoading();
+        document.getElementById('randomMovieSection').style.display = 'none';
+
+        try {
+            const params = buildFilterParams();
+            const query = document.getElementById('searchInput').value.trim();
+            const endpoint = query ? '/api/search' : '/api/movies';
+            const url = BASE + endpoint + (params ? '?' + params : '');
+            const movies = await apiFetch(url);
+
+            currentMovies = movies;
+            displayMovies(movies);
+            initialLoadDone = true;
+
+        } catch (error) {
+            console.error('Error loading movies:', error);
+            alert(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('hideWatchedToggle').checked = false;
+        document.getElementById('streamingFilter').value = '';
+        document.getElementById('decadeFilter').value = '';
+        document.getElementById('countryFilter').value = '';
+        document.getElementById('directorFilter').value = '';
+        localStorage.removeItem(FILTER_KEY);
+        loadMovies();
+    }
+
+    function displayMovies(movies) {
+        const container = document.getElementById('moviesContainer');
+        const movieCount = document.getElementById('movieCount');
+        const watchedCount = document.getElementById('watchedCount');
+
+        const totalWatched = currentMovies.filter(m => m.watched).length;
+
+        movieCount.textContent = movies.length;
+        watchedCount.textContent = totalWatched > 0 ? `(${totalWatched} watched)` : '';
+
+        container.innerHTML = movies.map(movie => createMovieCardHTML(movie)).join('');
+    }
+
+    async function surpriseMe() {
+        const params = buildFilterParams();
+        try {
+            let url = BASE + '/api/random';
+            if (params) url += '?' + params;
+            const movie = await apiFetch(url);
+            displayRandomMovie(movie, surpriseMe);
+        } catch (error) {
+            console.error('Error getting random movie:', error);
+            alert(error.message);
+        }
+    }
+
+    // All controls trigger the same unified load
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') loadMovies();
+    });
+    document.getElementById('hideWatchedToggle').addEventListener('change', loadMovies);
+    document.getElementById('streamingFilter').addEventListener('change', loadMovies);
+    document.getElementById('decadeFilter').addEventListener('change', loadMovies);
+    document.getElementById('countryFilter').addEventListener('change', loadMovies);
+    document.getElementById('directorFilter').addEventListener('change', loadMovies);
+    // Load filter options and movies on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+        await Promise.all([loadFilterOptions(), loadMyServices()]);
+        restoreFilters();
+        await loadMovies();
+    });
+</script>
+{% endblock %}

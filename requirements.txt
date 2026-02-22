@@ -1,0 +1,4 @@
+selenium
+beautifulsoup4
+flask
+simple-justwatch-python-api

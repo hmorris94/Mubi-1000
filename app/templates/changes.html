@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% set active_nav = "changes" %}
+
+{% block title %}Changes - The Mubi 1000{% endblock %}
+{% block heading %}The Mubi 1000 Changes{% endblock %}
+{% block subheading %}Track weekly changes in the rankings{% endblock %}
+
+{% block content %}
+    <!-- Controls -->
+    <section class="bg-gray-800 rounded-lg shadow-md p-4 mb-8">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[140px]">
+                <label class="block text-sm font-medium text-gray-300 mb-2">From</label>
+                <select id="fromSnapshot"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                </select>
+            </div>
+            <div class="flex-1 min-w-[140px]">
+                <label class="block text-sm font-medium text-gray-300 mb-2">To</label>
+                <select id="toSnapshot"
+                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                </select>
+            </div>
+            <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
+                <input type="checkbox" id="hideTrivialToggle" checked class="mr-2 w-4 h-4">
+                <span class="text-base text-gray-300">Hide trivial moves</span>
+            </label>
+        </div>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-400">Loading changes...</p>
+    </div>
+
+    <!-- Changes Content -->
+    <div id="changesContent"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function showLoading() {
+        document.getElementById('loading').classList.add('active');
+    }
+
+    function hideLoading() {
+        document.getElementById('loading').classList.remove('active');
+    }
+
+    let lastChangesData = null;
+    let snapshots = [];
+    let initialLoad = true;
+
+    function mondayLabel(ts) {
+        const year = parseInt(ts.substring(0, 4));
+        const month = parseInt(ts.substring(4, 6)) - 1;
+        const day = parseInt(ts.substring(6, 8));
+        const date = new Date(year, month, day);
+        const dow = date.getDay();
+        date.setDate(date.getDate() - (dow === 0 ? 6 : dow - 1));
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const yy = String(date.getFullYear()).slice(-2);
+        return `${mm}/${dd}/${yy}`;
+    }
+
+    async function loadSnapshots() {
+        try {
+            snapshots = await apiFetch(BASE + '/api/snapshots');
+            const fromSelect = document.getElementById('fromSnapshot');
+            const toSelect = document.getElementById('toSnapshot');
+
+            snapshots.forEach((ts) => {
+                const label = mondayLabel(ts);
+
+                const fromOpt = document.createElement('option');
+                fromOpt.value = ts;
+                fromOpt.textContent = label;
+                fromSelect.appendChild(fromOpt);
+
+                const toOpt = document.createElement('option');
+                toOpt.value = ts;
+                toOpt.textContent = label;
+                toSelect.appendChild(toOpt);
+            });
+
+            // Default: from = oldest, to = newest
+            if (snapshots.length >= 2) {
+                fromSelect.value = snapshots[snapshots.length - 1];
+                toSelect.value = snapshots[0];
+            }
+        } catch (error) {
+            console.error('Error loading snapshots:', error);
+        }
+    }
+
+    async function loadChanges() {
+        if (initialLoad) showLoading();
+
+        try {
+            const from = document.getElementById('fromSnapshot').value;
+            const to = document.getElementById('toSnapshot').value;
+            let url = BASE + '/api/changes';
+            if (from && to) {
+                url += `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+            }
+            const data = await apiFetch(url);
+            lastChangesData = data;
+            displayChanges(data);
+
+        } catch (error) {
+            console.error('Error loading changes:', error);
+            displayError(error.message);
+        } finally {
+            if (initialLoad) {
+                hideLoading();
+                initialLoad = false;
+            }
+        }
+    }
+
+    function displayError(message) {
+        const content = document.getElementById('changesContent');
+        content.innerHTML = `
+            <div class="bg-red-900 border border-red-700 rounded-lg p-6">
+                <h2 class="text-xl font-bold text-red-300 mb-2">Error</h2>
+                <p class="text-red-400">${message}</p>
+            </div>
+        `;
+    }
+
+    function displayChanges(data) {
+        const content = document.getElementById('changesContent');
+        const changes = data.changes;
+        const hideTrivial = document.getElementById('hideTrivialToggle').checked;
+        const movedUp = hideTrivial ? changes.moved_up.filter(m => m.change >= 10) : changes.moved_up;
+        const movedDown = hideTrivial ? changes.moved_down.filter(m => m.change >= 10) : changes.moved_down;
+        const summary = {
+            total_added: changes.added.length,
+            total_removed: changes.removed.length,
+            total_moved_up: movedUp.length,
+            total_moved_down: movedDown.length,
+            total_unchanged: changes.unchanged.length,
+        };
+
+        content.innerHTML = `
+            <!-- Summary -->
+            <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-gray-100">Summary</h2>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="text-center p-4 bg-green-900 rounded-lg">
+                        <div class="text-2xl font-bold text-green-400">${summary.total_added}</div>
+                        <div class="text-sm text-gray-400">Added</div>
+                    </div>
+                    <div class="text-center p-4 bg-red-900 rounded-lg">
+                        <div class="text-2xl font-bold text-red-400">${summary.total_removed}</div>
+                        <div class="text-sm text-gray-400">Removed</div>
+                    </div>
+                    <div class="text-center p-4 bg-blue-900 rounded-lg">
+                        <div class="text-2xl font-bold text-blue-400">${summary.total_moved_up}</div>
+                        <div class="text-sm text-gray-400">Moved Up</div>
+                    </div>
+                    <div class="text-center p-4 bg-orange-900 rounded-lg">
+                        <div class="text-2xl font-bold text-orange-400">${summary.total_moved_down}</div>
+                        <div class="text-sm text-gray-400">Moved Down</div>
+                    </div>
+                    <div class="text-center p-4 bg-gray-700 rounded-lg">
+                        <div class="text-2xl font-bold text-gray-300">${summary.total_unchanged}</div>
+                        <div class="text-sm text-gray-400">Unchanged</div>
+                    </div>
+                </div>
+                <div class="mt-4 text-sm text-gray-400">
+                    <p>Comparing: ${mondayLabel(data.previous_timestamp)} → ${mondayLabel(data.latest_timestamp)}</p>
+                </div>
+            </section>
+
+            <!-- Added Movies -->
+            ${changes.added.length > 0 ? `
+            <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-green-400">New Entries (${changes.added.length})</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${changes.added.map(movie => `
+                        <div class="change-item border-l-4 border-green-500 pl-4 py-2">
+                            <div class="font-semibold text-gray-100">#${movie.rank} ${movie.title}</div>
+                            ${movie.director ? `<div class="text-sm text-gray-400">${movie.director}</div>` : ''}
+                            ${movie.year ? `<div class="text-sm text-gray-400">${movie.year}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+            ` : ''}
+
+            <!-- Removed Movies -->
+            ${changes.removed.length > 0 ? `
+            <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-red-400">Removed Movies (${changes.removed.length})</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${changes.removed.map(movie => `
+                        <div class="change-item border-l-4 border-red-500 pl-4 py-2">
+                            <div class="font-semibold text-gray-100">#${movie.rank} ${movie.title}</div>
+                            ${movie.director ? `<div class="text-sm text-gray-400">${movie.director}</div>` : ''}
+                            ${movie.year ? `<div class="text-sm text-gray-400">${movie.year}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+            ` : ''}
+
+            <!-- Moved Up -->
+            ${movedUp.length > 0 ? `
+            <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Moved Up (${movedUp.length})</h2>
+                <div class="space-y-2">
+                    ${movedUp.map(movie => `
+                        <div class="change-item border-l-4 border-blue-500 pl-4 py-2 flex justify-between items-center">
+                            <div>
+                                <div class="font-semibold text-gray-100">${movie.title}</div>
+                                ${movie.director ? `<div class="text-sm text-gray-400">${movie.director}</div>` : ''}
+                                ${movie.year ? `<div class="text-sm text-gray-400">${movie.year}</div>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-blue-400">+${movie.change}</div>
+                                <div class="text-sm text-gray-400">#${movie.old_rank} → #${movie.new_rank}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+            ` : ''}
+
+            <!-- Moved Down -->
+            ${movedDown.length > 0 ? `
+            <section class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-orange-400">Moved Down (${movedDown.length})</h2>
+                <div class="space-y-2">
+                    ${movedDown.map(movie => `
+                        <div class="change-item border-l-4 border-orange-500 pl-4 py-2 flex justify-between items-center">
+                            <div>
+                                <div class="font-semibold text-gray-100">${movie.title}</div>
+                                ${movie.director ? `<div class="text-sm text-gray-400">${movie.director}</div>` : ''}
+                                ${movie.year ? `<div class="text-sm text-gray-400">${movie.year}</div>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-orange-400">-${movie.change}</div>
+                                <div class="text-sm text-gray-400">#${movie.old_rank} → #${movie.new_rank}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+            ` : ''}
+
+            <!-- No Changes -->
+            ${summary.total_added === 0 && summary.total_removed === 0 && summary.total_moved_up === 0 && summary.total_moved_down === 0 ? `
+            <section class="bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-400">No Changes</h2>
+                <p class="text-gray-400">The rankings remained unchanged between these two versions.</p>
+            </section>
+            ` : ''}
+        `;
+    }
+
+    document.getElementById('hideTrivialToggle').addEventListener('change', function() {
+        if (lastChangesData) displayChanges(lastChangesData);
+    });
+
+    document.getElementById('fromSnapshot').addEventListener('change', loadChanges);
+    document.getElementById('toSnapshot').addEventListener('change', loadChanges);
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadSnapshots();
+        await loadChanges();
+    });
+</script>
+{% endblock %}

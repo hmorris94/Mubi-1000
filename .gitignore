@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data files (user-specific)
+data/*.json
+data/*.csv
+!data/.gitkeep
+
+# Testing
+testing_scripts/
+test_*.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / tools
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# Environment
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Personal notes
+FEATURE_IDEAS.md
+
+# Chrome/Selenium
+chromedriver
+chromedriver.exe

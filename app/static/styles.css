@@ -1,0 +1,63 @@
+/* === Input placeholders === */
+::placeholder {
+    color: #d1d5db !important;
+    opacity: 1 !important;
+}
+
+/* === Watched state === */
+.watched {
+    opacity: 0.4;
+    background-color: #374151;
+}
+
+/* === Card transitions === */
+.movie-card {
+    transition: all 0.3s ease;
+}
+.movie-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.director-card,
+.country-card {
+    transition: all 0.2s ease;
+}
+.director-card:hover,
+.country-card:hover {
+    transform: translateY(-2px);
+    background-color: #374151;
+}
+
+.stat-card {
+    transition: transform 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.change-item {
+    transition: all 0.3s ease;
+}
+.change-item:hover {
+    transform: translateX(4px);
+}
+
+/* === Bar chart animation === */
+.bar {
+    transition: width 0.5s ease;
+}
+
+/* === Active filter highlight === */
+.filter-active {
+    border-color: #ca8a04 !important;
+    box-shadow: 0 0 0 1px #ca8a04;
+}
+
+/* === Loading spinner (class-toggle approach) === */
+.loading {
+    display: none;
+}
+.loading.active {
+    display: block;
+}

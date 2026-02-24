@@ -10,9 +10,19 @@
             <div class="flex-1">
                 <label class="block text-sm font-medium text-gray-300 mb-2">Search Movies</label>
                 <div class="flex gap-2">
-                    <input type="text" id="searchInput"
-                           class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100"
-                           placeholder="Search by title, director, country, or year...">
+                    <div class="relative flex-1">
+                        <input type="text" id="searchInput"
+                               class="w-full px-3 py-2 pr-8 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100"
+                               placeholder="Search by title, director, country, or year...">
+                        <button id="searchClear"
+                                onclick="clearSearch()"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 hidden w-5 h-5 flex items-center justify-center rounded-full bg-gray-500 hover:bg-gray-400 text-gray-100 text-xs leading-none transition"
+                                aria-label="Clear search">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/>
+                            </svg>
+                        </button>
+                    </div>
                     <button onclick="loadMovies()"
                             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
                         Search
@@ -22,39 +32,14 @@
         </div>
 
         <!-- Filters -->
-        <div class="border-t border-gray-700 pt-4 mb-6">
-            <label class="block text-sm font-medium text-gray-300 mb-3">Filter by...</label>
+        <div class="border-t border-gray-700 pt-4 mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-3">Show only...</label>
         </div>
         <div class="flex flex-wrap gap-4 items-end mb-6">
-            <div class="flex-1 min-w-[120px]">
-                <label class="block text-sm font-medium text-gray-300 mb-2">Decade</label>
-                <select id="decadeFilter"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
-                    <option value="">All Decades</option>
-                </select>
-            </div>
-            <div class="flex-1 min-w-[120px]">
-                <label class="block text-sm font-medium text-gray-300 mb-2">Country</label>
-                <select id="countryFilter"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
-                    <option value="">All Countries</option>
-                </select>
-            </div>
-            <div class="flex-1 min-w-[120px]">
-                <label class="block text-sm font-medium text-gray-300 mb-2">Director</label>
-                <select id="directorFilter"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
-                    <option value="">All Directors</option>
-                </select>
-            </div>
-            <div class="flex-1 min-w-[120px]">
-                <label class="block text-sm font-medium text-gray-300 mb-2">Streaming</label>
-                <select id="streamingFilter"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
-                    <option value="">All Movies</option>
-                    <option value="__my__">My Services</option>
-                </select>
-            </div>
+            <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
+                <input type="checkbox" id="streamableToggle" class="mr-2 w-4 h-4">
+                <span class="text-base text-gray-300">Streamable</span>
+            </label>
             <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
                 <input type="checkbox" id="hideWatchedToggle" class="mr-2 w-4 h-4">
                 <span class="text-base text-gray-300">Unwatched</span>
@@ -62,13 +47,53 @@
         </div>
 
         <!-- My Services Configuration -->
-        <div class="border-t border-gray-700 pt-4 mb-6">
+        <div class="border-t border-gray-700 pt-4 mb-4">
             <button onclick="toggleMyServicesPanel()" class="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-gray-100 transition mb-3">
                 <span id="myServicesCaret" class="inline-block transition-transform duration-200" style="border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;width:0;height:0"></span>
                 My Streaming Services
             </button>
             <div id="myServicesPanel" class="hidden">
                 <div id="myServicesCheckboxes" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Advanced Filters -->
+        <div class="border-t border-gray-700 pt-4 mb-6">
+            <button onclick="toggleAdvancedFiltersPanel()" class="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-gray-100 transition mb-3">
+                <span id="advancedFiltersCaret" class="inline-block transition-transform duration-200" style="border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;width:0;height:0"></span>
+                Advanced Filters
+            </button>
+            <div id="advancedFiltersPanel" class="hidden">
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div class="flex-1 min-w-[120px]">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Decade</label>
+                        <select id="decadeFilter"
+                                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                            <option value="">All Decades</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[120px]">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Country</label>
+                        <select id="countryFilter"
+                                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                            <option value="">All Countries</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[120px]">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Director</label>
+                        <select id="directorFilter"
+                                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                            <option value="">All Directors</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[120px]" id="streamingServiceWrapper">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Streaming Service</label>
+                        <select id="streamingServiceFilter"
+                                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                            <option value="">N/A</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -119,17 +144,18 @@
     let initialLoadDone = false;
 
     const FILTER_KEY = 'mubi_filters';
-    const FILTER_VERSION = 1;
+    const FILTER_VERSION = 2;
 
     function saveFilters() {
         const state = {
-            v:           FILTER_VERSION,
-            q:           document.getElementById('searchInput').value,
-            hideWatched: document.getElementById('hideWatchedToggle').checked,
-            streaming:   document.getElementById('streamingFilter').value,
-            decade:      document.getElementById('decadeFilter').value,
-            country:     document.getElementById('countryFilter').value,
-            director:    document.getElementById('directorFilter').value,
+            v:               FILTER_VERSION,
+            q:               document.getElementById('searchInput').value,
+            hideWatched:     document.getElementById('hideWatchedToggle').checked,
+            streamable:      document.getElementById('streamableToggle').checked,
+            streamingService: document.getElementById('streamingServiceFilter').value,
+            decade:          document.getElementById('decadeFilter').value,
+            country:         document.getElementById('countryFilter').value,
+            director:        document.getElementById('directorFilter').value,
         };
         localStorage.setItem(FILTER_KEY, JSON.stringify(state));
     }
@@ -142,12 +168,23 @@
                 localStorage.removeItem(FILTER_KEY);
                 return;
             }
-            if (state.q)           document.getElementById('searchInput').value = state.q;
-            if (state.hideWatched) document.getElementById('hideWatchedToggle').checked = true;
-            if (state.streaming)   document.getElementById('streamingFilter').value = state.streaming;
-            if (state.decade)      document.getElementById('decadeFilter').value = state.decade;
-            if (state.country)     document.getElementById('countryFilter').value = state.country;
-            if (state.director)    document.getElementById('directorFilter').value = state.director;
+            if (state.q) {
+                document.getElementById('searchInput').value = state.q;
+                document.getElementById('searchClear').classList.remove('hidden');
+            }
+            if (state.hideWatched)     document.getElementById('hideWatchedToggle').checked = true;
+            if (state.streamable)      document.getElementById('streamableToggle').checked = true;
+            if (state.streamingService) document.getElementById('streamingServiceFilter').value = state.streamingService;
+            if (state.decade)          document.getElementById('decadeFilter').value = state.decade;
+            if (state.country)         document.getElementById('countryFilter').value = state.country;
+            if (state.director)        document.getElementById('directorFilter').value = state.director;
+            if (state.decade || state.country || state.director || state.streamingService) {
+                const panel = document.getElementById('advancedFiltersPanel');
+                const caret = document.getElementById('advancedFiltersCaret');
+                panel.classList.remove('hidden');
+                caret.style.transform = 'rotate(90deg)';
+            }
+            updateStreamingServiceFilterState();
         } catch (e) { /* ignore corrupt data */ }
     }
 
@@ -188,13 +225,13 @@
                 directorSelect.appendChild(option);
             });
 
-            const streamingSelect = document.getElementById('streamingFilter');
+            const streamingServiceSelect = document.getElementById('streamingServiceFilter');
             if (filterOptions.streaming_services) {
                 filterOptions.streaming_services.forEach(s => {
                     const option = document.createElement('option');
                     option.value = s.technical_name;
                     option.textContent = `${s.name} (${s.count})`;
-                    streamingSelect.appendChild(option);
+                    streamingServiceSelect.appendChild(option);
                 });
             }
 
@@ -257,11 +294,19 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ services: selected }),
             });
-            const streaming = document.getElementById('streamingFilter').value;
-            if (streaming === '__my__') loadMovies();
+            if (document.getElementById('streamableToggle').checked) loadMovies();
         } catch (error) {
             console.error('Error saving my services:', error);
         }
+    }
+
+    function updateStreamingServiceFilterState() {
+        const streamable = document.getElementById('streamableToggle').checked;
+        const wrapper = document.getElementById('streamingServiceWrapper');
+        const select = document.getElementById('streamingServiceFilter');
+        select.disabled = streamable;
+        wrapper.classList.toggle('opacity-40', streamable);
+        wrapper.classList.toggle('pointer-events-none', streamable);
     }
 
     function toggleMyServicesPanel() {
@@ -272,12 +317,24 @@
         if (!isHidden) renderMyServicesPanel();
     }
 
+    function toggleAdvancedFiltersPanel() {
+        const panel = document.getElementById('advancedFiltersPanel');
+        const caret = document.getElementById('advancedFiltersCaret');
+        const isHidden = panel.classList.toggle('hidden');
+        caret.style.transform = isHidden ? '' : 'rotate(90deg)';
+    }
+
     function updateFilterHighlights() {
-        const selects = ['decadeFilter', 'countryFilter', 'directorFilter', 'streamingFilter'];
+        const selects = ['decadeFilter', 'countryFilter', 'directorFilter'];
         selects.forEach(id => {
             const el = document.getElementById(id);
             el.classList.toggle('filter-active', el.value !== '');
         });
+        const streamable = document.getElementById('streamableToggle');
+        streamable.closest('label').classList.toggle('filter-active', streamable.checked);
+        // Advanced streaming service highlight only when not overridden
+        const svc = document.getElementById('streamingServiceFilter');
+        svc.classList.toggle('filter-active', svc.value !== '' && !streamable.checked);
         const cb = document.getElementById('hideWatchedToggle');
         cb.closest('label').classList.toggle('filter-active', cb.checked);
         const search = document.getElementById('searchInput');
@@ -293,8 +350,14 @@
         const hideWatched = document.getElementById('hideWatchedToggle').checked;
         if (hideWatched) params.append('hide_watched', 'true');
 
-        const streaming = document.getElementById('streamingFilter').value;
-        if (streaming) params.append('streaming_service', streaming);
+        // Streamable checkbox takes priority over advanced streaming service filter
+        const streamable = document.getElementById('streamableToggle').checked;
+        if (streamable) {
+            params.append('streaming_service', '__my__');
+        } else {
+            const streamingService = document.getElementById('streamingServiceFilter').value;
+            if (streamingService) params.append('streaming_service', streamingService);
+        }
 
         const decade = document.getElementById('decadeFilter').value;
         if (decade) params.append('decade', decade);
@@ -336,10 +399,12 @@
     function resetFilters() {
         document.getElementById('searchInput').value = '';
         document.getElementById('hideWatchedToggle').checked = false;
-        document.getElementById('streamingFilter').value = '';
+        document.getElementById('streamableToggle').checked = false;
+        document.getElementById('streamingServiceFilter').value = '';
         document.getElementById('decadeFilter').value = '';
         document.getElementById('countryFilter').value = '';
         document.getElementById('directorFilter').value = '';
+        updateStreamingServiceFilterState();
         localStorage.removeItem(FILTER_KEY);
         loadMovies();
     }
@@ -370,12 +435,27 @@
         }
     }
 
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchClear').classList.add('hidden');
+        loadMovies();
+    }
+
+    // Show/hide the clear button based on input content
+    document.getElementById('searchInput').addEventListener('input', function() {
+        document.getElementById('searchClear').classList.toggle('hidden', this.value === '');
+    });
+
     // All controls trigger the same unified load
     document.getElementById('searchInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') loadMovies();
     });
     document.getElementById('hideWatchedToggle').addEventListener('change', loadMovies);
-    document.getElementById('streamingFilter').addEventListener('change', loadMovies);
+    document.getElementById('streamableToggle').addEventListener('change', function() {
+        updateStreamingServiceFilterState();
+        loadMovies();
+    });
+    document.getElementById('streamingServiceFilter').addEventListener('change', loadMovies);
     document.getElementById('decadeFilter').addEventListener('change', loadMovies);
     document.getElementById('countryFilter').addEventListener('change', loadMovies);
     document.getElementById('directorFilter').addEventListener('change', loadMovies);

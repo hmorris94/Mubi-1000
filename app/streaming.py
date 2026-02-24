@@ -9,7 +9,7 @@ from simplejustwatchapi.justwatch import search as jw_search
 
 
 # Delay between API calls (seconds)
-REQUEST_DELAY = 0.75
+REQUEST_DELAY = 0.5
 
 
 class StreamingLookup:

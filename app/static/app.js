@@ -76,7 +76,7 @@ function displayRandomMovie(movie, getAnotherFn) {
                     : ''}
             </div>
             ${movie.watched ? '<p class="text-lg text-orange-400 font-semibold mb-4">You have already watched this movie!</p>' : ''}
-            <div class="space-x-4">
+            <div class="flex flex-wrap justify-center gap-3">
                 ${movie.url ? `<a href="https://mubi.com${movie.url}" target="_blank" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">View on Mubi</a>` : ''}
                 <button onclick="window._getAnotherRandom()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                     Get Another Random Movie

@@ -10,13 +10,13 @@
             <div class="flex-1">
                 <label class="block text-sm font-medium text-gray-300 mb-2">Search Movies</label>
                 <div class="flex gap-2">
-                    <div class="relative flex-1">
+                    <div class="flex items-center flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus-within:ring-2 focus-within:ring-blue-500">
                         <input type="text" id="searchInput"
-                               class="w-full px-3 py-2 pr-8 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100"
+                               class="flex-1 min-w-0 bg-transparent outline-none text-gray-100"
                                placeholder="Search by title, director, country, or year...">
                         <button id="searchClear"
                                 onclick="clearSearch()"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 hidden w-5 h-5 flex items-center justify-center rounded-full bg-gray-500 hover:bg-gray-400 text-gray-100 text-xs leading-none transition"
+                                class="hidden flex-shrink-0 ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-gray-500 hover:bg-gray-400 text-gray-100 text-xs leading-none transition"
                                 aria-label="Clear search">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/>
@@ -35,7 +35,7 @@
         <div class="border-t border-gray-700 pt-4 mb-4">
             <label class="block text-sm font-medium text-gray-300 mb-3">Show only...</label>
         </div>
-        <div class="flex flex-wrap gap-4 items-end mb-6">
+        <div class="flex flex-wrap gap-4 items-end mb-2">
             <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
                 <input type="checkbox" id="streamableToggle" class="mr-2 w-4 h-4">
                 <span class="text-base text-gray-300">Streamable</span>
@@ -126,9 +126,9 @@
     <section id="movieList" class="bg-gray-800 rounded-lg shadow-md p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-100">Top 1000 Movies</h2>
-            <div class="text-sm text-gray-400">
-                <span id="movieCount">0</span> movies
-                <span id="watchedCount" class="ml-4"></span>
+            <div class="text-sm text-gray-400 text-right">
+                <div><span id="movieCount">0</span> movies</div>
+                <div id="watchedCount"></div>
             </div>
         </div>
 
@@ -330,13 +330,8 @@
             const el = document.getElementById(id);
             el.classList.toggle('filter-active', el.value !== '');
         });
-        const streamable = document.getElementById('streamableToggle');
-        streamable.closest('label').classList.toggle('filter-active', streamable.checked);
-        // Advanced streaming service highlight only when not overridden
         const svc = document.getElementById('streamingServiceFilter');
-        svc.classList.toggle('filter-active', svc.value !== '' && !streamable.checked);
-        const cb = document.getElementById('hideWatchedToggle');
-        cb.closest('label').classList.toggle('filter-active', cb.checked);
+        svc.classList.toggle('filter-active', svc.value !== '');
         const search = document.getElementById('searchInput');
         search.classList.toggle('filter-active', search.value.trim() !== '');
     }
@@ -440,6 +435,37 @@
         document.getElementById('searchClear').classList.add('hidden');
         loadMovies();
     }
+
+    // Responsive placeholder: pick the longest form that fits the input width
+    (function() {
+        const candidates = [
+            "Search by title, director, country, or year\u2026",
+            "Title, director, country, or year\u2026",
+            "Title, director, country, year\u2026",
+            "Title/director/country/year\u2026",
+            "Title/director/country/year",
+        ];
+        const input = document.getElementById('searchInput');
+        const ruler = document.createElement('span');
+        ruler.style.cssText = 'visibility:hidden;position:absolute;white-space:nowrap;pointer-events:none';
+        document.body.appendChild(ruler);
+        function updatePlaceholder() {
+            const style = getComputedStyle(input);
+            ruler.style.font = style.font;
+            ruler.style.letterSpacing = style.letterSpacing;
+            const available = input.clientWidth;
+            for (const text of candidates) {
+                ruler.textContent = text;
+                if (ruler.offsetWidth <= available) {
+                    input.placeholder = text;
+                    return;
+                }
+            }
+            input.placeholder = candidates[candidates.length - 1];
+        }
+        new ResizeObserver(updatePlaceholder).observe(input);
+        updatePlaceholder();
+    })();
 
     // Show/hide the clear button based on input content
     document.getElementById('searchInput').addEventListener('input', function() {

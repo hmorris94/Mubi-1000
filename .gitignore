@@ -56,3 +56,7 @@ FEATURE_IDEAS.md
 # Chrome/Selenium
 chromedriver
 chromedriver.exe
+
+# Node / Tailwind
+node_modules/
+app/static/output.css

@@ -1,0 +1,26 @@
+{
+  "name": "mubi-1000",
+  "version": "1.0.0",
+  "description": "A Python tool for scraping, visualizing, and sifting through the Mubi Top 1000 movies list with streaming availability, criteria filtering, and watched movies management.",
+  "main": "index.js",
+  "scripts": {
+    "build": "tailwindcss -i app/static/input.css -o app/static/output.css --minify",
+    "watch": "tailwindcss -i app/static/input.css -o app/static/output.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hmorris94/Mubi-1000.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hmorris94/Mubi-1000/issues"
+  },
+  "homepage": "https://github.com/hmorris94/Mubi-1000#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
+    "tailwindcss": "^4.2.1"
+  }
+}

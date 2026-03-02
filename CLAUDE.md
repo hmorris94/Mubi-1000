@@ -11,6 +11,13 @@ The Mubi 1000 is a Python tool for scraping, tracking, and visualizing the Mubi 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
+npm install
+
+# Build Tailwind CSS (required after modifying templates or app.js)
+npm run build
+
+# Watch for changes during frontend development
+npm run watch
 
 # Scrape the Mubi 1000 list (also runs streaming lookup automatically)
 python main.py scrape
@@ -127,10 +134,12 @@ All data stored in `data/` directory (gitignored):
 
 ### Frontend
 
-Uses Jinja2 template inheritance, Tailwind CSS (dark mode), and vanilla JS with Fetch API.
+Uses Jinja2 template inheritance, Tailwind CSS v4, and vanilla JS with Fetch API.
+
+Tailwind is compiled via the `@tailwindcss/cli` package. Source: `app/static/input.css` → output: `app/static/output.css` (gitignored, must be built locally). Run `npm run build` after any changes to templates or `app.js`, or `npm run watch` during development.
 
 **Templates** (`app/templates/`):
-- `base.html` - Base template with shared boilerplate, nav bar, Tailwind config, CSS/JS includes
+- `base.html` - Base template with shared boilerplate, nav bar, CSS/JS includes
 - `index.html` - Main movie grid with filters, search, Surprise Me, collapsible My Services panel
 - `stats.html` - Statistics dashboard with progress, year stats, and watched breakdowns
 - `directors.html` / `director.html` - Directors list and detail pages
@@ -140,7 +149,9 @@ Uses Jinja2 template inheritance, Tailwind CSS (dark mode), and vanilla JS with 
 All child templates use `{% extends "base.html" %}` and `{% set active_nav = "..." %}` for nav active state.
 
 **Static files** (`app/static/`):
-- `styles.css` - Consolidated CSS (card hovers, transitions, watched styling, active filter highlights, loading states)
+- `input.css` - Tailwind CSS entry point (`@import "tailwindcss"`)
+- `output.css` - Compiled Tailwind output (gitignored; build with `npm run build`)
+- `styles.css` - Custom CSS on top of Tailwind (card hovers, transitions, watched styling, active filter highlights, loading states)
 - `app.js` - Shared JS: `BASE` URL (from `body[data-api-base]`), `apiFetch()`, `createMovieCardHTML()`, `displayRandomMovie()`
 
 ### Deployment

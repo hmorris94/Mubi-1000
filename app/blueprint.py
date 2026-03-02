@@ -19,7 +19,7 @@ ALTERNATE_TITLES = {
 }
 
 
-_SERVER_ONLY_FIELDS = frozenset({'streaming_services', 'watchable', 'scraped_at'})
+_SERVER_ONLY_FIELDS = frozenset({'streaming_services', 'streaming_services_full', 'watchable', 'scraped_at'})
 
 
 def _frontend(movie):
@@ -147,6 +147,7 @@ def _merge_streaming(movies, streaming_data):
             filtered.append(s)
         movie['streaming_services'] = [s['technical_name'] for s in filtered]
         movie['streaming_names'] = [s['name'] for s in filtered]
+        movie['streaming_services_full'] = filtered
 
 
 class MovieCache:

@@ -332,8 +332,6 @@
         });
         const svc = document.getElementById('streamingServiceFilter');
         svc.classList.toggle('filter-active', svc.value !== '');
-        const search = document.getElementById('searchInput');
-        search.classList.toggle('filter-active', search.value.trim() !== '');
     }
 
     function buildFilterParams() {
@@ -393,6 +391,7 @@
 
     function resetFilters() {
         document.getElementById('searchInput').value = '';
+        document.getElementById('searchClear').classList.add('hidden');
         document.getElementById('hideWatchedToggle').checked = false;
         document.getElementById('streamableToggle').checked = false;
         document.getElementById('streamingServiceFilter').value = '';

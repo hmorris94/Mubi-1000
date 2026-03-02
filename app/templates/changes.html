@@ -134,8 +134,8 @@
         const content = document.getElementById('changesContent');
         const changes = data.changes;
         const hideTrivial = document.getElementById('hideTrivialToggle').checked;
-        const movedUp = hideTrivial ? changes.moved_up.filter(m => m.change >= 20) : changes.moved_up;
-        const movedDown = hideTrivial ? changes.moved_down.filter(m => m.change >= 20) : changes.moved_down;
+        const movedUp = hideTrivial ? changes.moved_up.filter(m => m.change >= Math.ceil(m.new_rank * 0.1)) : changes.moved_up;
+        const movedDown = hideTrivial ? changes.moved_down.filter(m => m.change >= Math.max(Math.ceil(m.new_rank * 0.1), 2)) : changes.moved_down;
         const summary = {
             total_added: changes.added.length,
             total_removed: changes.removed.length,

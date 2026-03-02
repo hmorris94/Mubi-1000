@@ -9,7 +9,11 @@ from simplejustwatchapi.justwatch import search as jw_search
 
 
 # Delay between API calls (seconds)
-REQUEST_DELAY = 0.5
+REQUEST_DELAY = 0.75
+
+
+class RateLimitExhausted(Exception):
+    """Raised when JustWatch rate-limiting persists beyond the retry budget."""
 
 
 class StreamingLookup:
@@ -21,6 +25,11 @@ class StreamingLookup:
         self.language = language
         self.streaming_file = self.data_dir / "streaming.json"
         self._existing_data = self._load_existing()
+        # Snapshot services that existed before this run for regression detection
+        self._pre_run_services = {
+            k: bool(v.get("services"))
+            for k, v in self._existing_data.get("movies", {}).items()
+        }
 
     def _load_existing(self):
         """Load existing streaming.json if present."""
@@ -81,22 +90,40 @@ class StreamingLookup:
         """Query JustWatch for a single movie.
 
         Returns dict with services list, justwatch_id, and last_updated.
+        Returns None if rate-limited and all retries exhausted, so the caller
+        can preserve any existing cached data.
         """
-        try:
-            results = jw_search(
-                title,
-                country=self.country,
-                language=self.language,
-                count=5,
-                best_only=True,
-            )
-        except Exception as e:
-            print(f"  Error querying JustWatch for '{title}': {e}")
-            return {
-                "services": [],
-                "justwatch_id": None,
-                "last_updated": datetime.now().isoformat(),
-            }
+        delay = 2
+        max_total_wait = 300  # 5 minutes
+        total_waited = 0
+
+        while True:
+            try:
+                results = jw_search(
+                    title,
+                    country=self.country,
+                    language=self.language,
+                    count=5,
+                    best_only=True,
+                )
+                break
+            except Exception as e:
+                if "429" in str(e):
+                    if total_waited + delay > max_total_wait:
+                        raise RateLimitExhausted(
+                            f"Rate limit retry budget (5 min) exhausted on '{title}'"
+                        ) from e
+                    print(f"  Rate-limited for '{title}', retrying in {delay}s...")
+                    time.sleep(delay)
+                    total_waited += delay
+                    delay = min(delay * 2, max_total_wait - total_waited)
+                else:
+                    print(f"  Error querying JustWatch for '{title}': {e}")
+                    return {
+                        "services": [],
+                        "justwatch_id": None,
+                        "last_updated": datetime.now().isoformat(),
+                    }
 
         best = self._find_best_match(results, title, year)
 
@@ -126,6 +153,82 @@ class StreamingLookup:
             "justwatch_id": best.entry_id if best.entry_id else None,
             "last_updated": datetime.now().isoformat(),
         }
+
+    def _check_integrity(self):
+        """Verify the saved streaming.json is coherent.
+
+        Checks:
+        - File exists and is valid JSON
+        - Expected top-level keys are present
+        - Every movie entry has required fields with correct types
+        - No movie that had streaming services before this run is now missing them
+          (regression guard against silent 429-induced data loss)
+
+        Prints a report and returns True if all checks pass, False otherwise.
+        """
+        print("\nRunning integrity check on streaming.json...")
+        ok = True
+
+        # 1. File readable and valid JSON
+        if not self.streaming_file.exists():
+            print("  FAIL: streaming.json does not exist")
+            return False
+        try:
+            data = json.loads(self.streaming_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  FAIL: could not parse streaming.json: {e}")
+            return False
+
+        # 2. Top-level structure
+        for key in ("metadata", "movies"):
+            if key not in data:
+                print(f"  FAIL: missing top-level key '{key}'")
+                ok = False
+        if not ok:
+            return False
+
+        movies_data = data["movies"]
+        if not isinstance(movies_data, dict):
+            print("  FAIL: 'movies' is not a dict")
+            return False
+
+        # 3. Per-entry field checks
+        required_fields = {"services", "justwatch_id", "last_updated"}
+        malformed = []
+        for key, entry in movies_data.items():
+            if not isinstance(entry, dict):
+                malformed.append(f"{key}: not a dict")
+                continue
+            missing = required_fields - entry.keys()
+            if missing:
+                malformed.append(f"{key}: missing fields {missing}")
+            if not isinstance(entry.get("services"), list):
+                malformed.append(f"{key}: 'services' is not a list")
+        if malformed:
+            print(f"  FAIL: {len(malformed)} malformed entries:")
+            for m in malformed[:10]:
+                print(f"    {m}")
+            if len(malformed) > 10:
+                print(f"    ... and {len(malformed) - 10} more")
+            ok = False
+
+        # 4. Regression check — services must not have been silently wiped
+        regressions = [
+            key for key, had_services in self._pre_run_services.items()
+            if had_services and not movies_data.get(key, {}).get("services")
+        ]
+        if regressions:
+            print(f"  FAIL: {len(regressions)} movies lost streaming services vs. pre-run data:")
+            for key in regressions[:10]:
+                title = key.split("|||")[0]
+                print(f"    {title}")
+            if len(regressions) > 10:
+                print(f"    ... and {len(regressions) - 10} more")
+            ok = False
+
+        if ok:
+            print(f"  OK: {len(movies_data)} entries, no issues found")
+        return ok
 
     def lookup_all(self, movies, force_refresh=False, skip_recent_days=7,
                    delay=REQUEST_DELAY):
@@ -166,10 +269,17 @@ class StreamingLookup:
                     except (ValueError, TypeError):
                         pass
 
-            result = self._query_movie(title, year)
-            existing_movies[key] = result
-            queried += 1
+            try:
+                result = self._query_movie(title, year)
+            except RateLimitExhausted as e:
+                print(f"\nAborted: {e}")
+                self._save(existing_movies, total, matched)
+                print(f"Progress saved. Queried: {queried}, Skipped: {skipped}, "
+                      f"With streaming: {matched}/{total}")
+                raise
 
+            queried += 1
+            existing_movies[key] = result
             if result["services"]:
                 matched += 1
                 svc_names = ", ".join(s["name"] for s in result["services"])
@@ -186,6 +296,7 @@ class StreamingLookup:
         self._save(existing_movies, total, matched)
         print(f"\nDone! Queried: {queried}, Skipped: {skipped}, "
               f"With streaming: {matched}/{total}")
+        self._check_integrity()
 
     def _save(self, movies_data, total, matched):
         """Save streaming data to disk."""

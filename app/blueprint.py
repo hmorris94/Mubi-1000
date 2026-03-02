@@ -19,6 +19,13 @@ ALTERNATE_TITLES = {
 }
 
 
+_SERVER_ONLY_FIELDS = frozenset({'streaming_services', 'watchable', 'scraped_at'})
+
+
+def _frontend(movie):
+    return {k: v for k, v in movie.items() if k not in _SERVER_ONLY_FIELDS}
+
+
 def normalize_title(title):
     if not title:
         return ""
@@ -139,7 +146,7 @@ def _merge_streaming(movies, streaming_data):
                 s = {**s, 'technical_name': canonical, 'name': alias[1]}
             filtered.append(s)
         movie['streaming_services'] = [s['technical_name'] for s in filtered]
-        movie['streaming_services_full'] = filtered
+        movie['streaming_names'] = [s['name'] for s in filtered]
 
 
 class MovieCache:
@@ -288,7 +295,7 @@ def create_blueprint(name="mubi", config=None):
         movies = cache.get_movies()
         if movies is None:
             return jsonify({'error': 'No movie data found. Please run the scraper first.'}), 404
-        return jsonify(apply_filters(movies, request.args, cfg["data_dir"]))
+        return jsonify([_frontend(m) for m in apply_filters(movies, request.args, cfg["data_dir"])])
 
     @bp.route('/api/random')
     def get_random_movie():
@@ -305,7 +312,7 @@ def create_blueprint(name="mubi", config=None):
         filtered = apply_filters(movies, request.args, cfg["data_dir"])
         if not filtered:
             return jsonify({'error': 'No movies match the selected filters.'}), 404
-        return jsonify(random.choice(filtered))
+        return jsonify(_frontend(random.choice(filtered)))
 
     @bp.route('/api/search')
     def search_movies():
@@ -321,7 +328,7 @@ def create_blueprint(name="mubi", config=None):
                   or query in m.get('country', '').lower()
                   or query in m.get('year', '').lower()]
         filtered = apply_filters(movies, request.args, cfg["data_dir"])
-        return jsonify(filtered)
+        return jsonify([_frontend(m) for m in filtered])
 
     @bp.route('/api/stats')
     def get_stats():

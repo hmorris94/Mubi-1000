@@ -37,7 +37,7 @@
         </div>
         <div class="flex flex-wrap gap-4 items-end mb-2">
             <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
-                <input type="checkbox" id="streamableToggle" class="mr-2 w-4 h-4">
+                <input type="checkbox" id="streamableToggle" class="mr-2 w-4 h-4" checked>
                 <span class="text-base text-gray-300">Streamable</span>
             </label>
             <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
@@ -172,8 +172,8 @@
                 document.getElementById('searchInput').value = state.q;
                 document.getElementById('searchClear').classList.remove('hidden');
             }
-            if (state.hideWatched)     document.getElementById('hideWatchedToggle').checked = true;
-            if (state.streamable)      document.getElementById('streamableToggle').checked = true;
+            document.getElementById('hideWatchedToggle').checked = !!state.hideWatched;
+            document.getElementById('streamableToggle').checked = !!state.streamable;
             if (state.streamingService) document.getElementById('streamingServiceFilter').value = state.streamingService;
             if (state.decade)          document.getElementById('decadeFilter').value = state.decade;
             if (state.country)         document.getElementById('countryFilter').value = state.country;

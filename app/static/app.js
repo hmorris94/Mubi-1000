@@ -42,8 +42,8 @@ function createMovieCardHTML(movie, options) {
                 ${showDirector && movie.director ? `<p class="text-sm text-gray-400"><span class="font-medium">Director:</span> <a href="${BASE}/director/${encodeURIComponent(movie.director)}" class="text-blue-400 hover:text-blue-300">${movie.director}</a></p>` : ''}
                 ${showCountry && movie.country ? `<p class="text-sm text-gray-400"><span class="font-medium">Country:</span> <a href="${BASE}/country/${encodeURIComponent(movie.country)}" class="text-blue-400 hover:text-blue-300">${movie.country}</a></p>` : ''}
                 ${movie.year ? `<p class="text-sm text-gray-400"><span class="font-medium">Year:</span> ${movie.year}</p>` : ''}
-                ${movie.streaming_services_full && movie.streaming_services_full.length > 0
-                    ? `<p class="text-sm text-gray-400"><span class="font-medium">Streaming:</span> <span class="text-green-400">${movie.streaming_services_full.map(s => s.name).join(', ')}</span></p>`
+                ${movie.streaming_names && movie.streaming_names.length > 0
+                    ? `<p class="text-sm text-gray-400"><span class="font-medium">Streaming:</span> <span class="text-green-400">${movie.streaming_names.join(', ')}</span></p>`
                     : ''}
             </div>
             ${movie.url ? `<a href="https://mubi.com${movie.url}" target="_blank" class="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">View on Mubi</a>` : ''}
@@ -71,8 +71,8 @@ function displayRandomMovie(movie, getAnotherFn) {
                 ${movie.director ? `<p class="text-xl text-gray-300"><span class="font-medium">Directed by:</span> <a href="${BASE}/director/${encodeURIComponent(movie.director)}" class="text-blue-400 hover:text-blue-300">${movie.director}</a></p>` : ''}
                 ${movie.country ? `<p class="text-lg text-gray-300"><span class="font-medium">Country:</span> <a href="${BASE}/country/${encodeURIComponent(movie.country)}" class="text-blue-400 hover:text-blue-300">${movie.country}</a></p>` : ''}
                 ${movie.year ? `<p class="text-lg text-gray-300"><span class="font-medium">Year:</span> ${movie.year}</p>` : ''}
-                ${movie.streaming_services_full && movie.streaming_services_full.length > 0
-                    ? `<p class="text-lg text-gray-300"><span class="font-medium">Streaming on:</span> <span class="text-green-400">${movie.streaming_services_full.map(s => s.name).join(', ')}</span></p>`
+                ${movie.streaming_names && movie.streaming_names.length > 0
+                    ? `<p class="text-lg text-gray-300"><span class="font-medium">Streaming on:</span> <span class="text-green-400">${movie.streaming_names.join(', ')}</span></p>`
                     : ''}
             </div>
             ${movie.watched ? '<p class="text-lg text-orange-400 font-semibold mb-4">You have already watched this movie!</p>' : ''}

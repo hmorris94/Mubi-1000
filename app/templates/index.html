@@ -37,7 +37,7 @@
         </div>
         <div class="flex flex-wrap gap-4 items-end mb-2">
             <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
-                <input type="checkbox" id="streamableToggle" class="mr-2 w-4 h-4" checked>
+                <input type="checkbox" id="streamableToggle" class="mr-2 w-4 h-4">
                 <span class="text-base text-gray-300">Streamable</span>
             </label>
             <label class="flex items-center cursor-pointer h-[42px] whitespace-nowrap">
@@ -364,16 +364,47 @@
         return params.toString();
     }
 
-    async function loadMovies() {
-        saveFilters();
+    function buildInitialParams() {
+        // Synchronously reads saved filter state from localStorage and returns
+        // { params, isSearch, state } so the initial movies fetch can fire in
+        // parallel with filter-options and my-services. Returns null if no
+        // saved state exists (first visit or cleared storage).
+        try {
+            const state = JSON.parse(localStorage.getItem(FILTER_KEY));
+            if (!state || state.v !== FILTER_VERSION) return null;
+            const p = new URLSearchParams();
+            if (state.q) p.append('q', state.q);
+            if (state.hideWatched) p.append('hide_watched', 'true');
+            if (state.streamable) {
+                p.append('streaming_service', '__my__');
+            } else if (state.streamingService) {
+                p.append('streaming_service', state.streamingService);
+            }
+            if (state.decade)   p.append('decade', state.decade);
+            if (state.country)  p.append('country', state.country);
+            if (state.director) p.append('director', state.director);
+            return { params: p.toString(), isSearch: !!state.q, state };
+        } catch(e) {}
+        return null;
+    }
+
+    async function loadMovies(prebuilt = null) {
+        let params, isSearch;
+        if (prebuilt !== null) {
+            // Initial parallel load — params come from localStorage directly,
+            // bypassing the DOM (dropdowns aren't populated yet).
+            ({ params, isSearch } = prebuilt);
+        } else {
+            params = buildFilterParams();
+            isSearch = !!document.getElementById('searchInput').value.trim();
+            saveFilters();
+        }
         updateFilterHighlights();
         if (!initialLoadDone) showLoading();
         document.getElementById('randomMovieSection').style.display = 'none';
 
         try {
-            const params = buildFilterParams();
-            const query = document.getElementById('searchInput').value.trim();
-            const endpoint = query ? '/api/search' : '/api/movies';
+            const endpoint = isSearch ? '/api/search' : '/api/movies';
             const url = BASE + endpoint + (params ? '?' + params : '');
             const movies = await apiFetch(url);
 
@@ -475,20 +506,39 @@
     document.getElementById('searchInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') loadMovies();
     });
-    document.getElementById('hideWatchedToggle').addEventListener('change', loadMovies);
+    document.getElementById('hideWatchedToggle').addEventListener('change', () => loadMovies());
     document.getElementById('streamableToggle').addEventListener('change', function() {
         updateStreamingServiceFilterState();
         loadMovies();
     });
-    document.getElementById('streamingServiceFilter').addEventListener('change', loadMovies);
-    document.getElementById('decadeFilter').addEventListener('change', loadMovies);
-    document.getElementById('countryFilter').addEventListener('change', loadMovies);
-    document.getElementById('directorFilter').addEventListener('change', loadMovies);
+    document.getElementById('streamingServiceFilter').addEventListener('change', () => loadMovies());
+    document.getElementById('decadeFilter').addEventListener('change', () => loadMovies());
+    document.getElementById('countryFilter').addEventListener('change', () => loadMovies());
+    document.getElementById('directorFilter').addEventListener('change', () => loadMovies());
     // Load filter options and movies on page load
     document.addEventListener('DOMContentLoaded', async function() {
-        await Promise.all([loadFilterOptions(), loadMyServices()]);
+        const prebuilt = buildInitialParams();
+
+        // Pre-restore simple state (no dropdown dependencies) immediately so
+        // the UI reflects active filters while the parallel fetches are in flight.
+        if (prebuilt?.state) {
+            const s = prebuilt.state;
+            if (s.q) {
+                document.getElementById('searchInput').value = s.q;
+                document.getElementById('searchClear').classList.remove('hidden');
+            }
+            document.getElementById('hideWatchedToggle').checked = !!s.hideWatched;
+            document.getElementById('streamableToggle').checked = !!s.streamable;
+            updateStreamingServiceFilterState();
+        }
+
+        // Fire all three in parallel. loadMovies uses pre-built params so it
+        // doesn't need filter-options or my-services to complete first.
+        await Promise.all([loadFilterOptions(), loadMyServices(), loadMovies(prebuilt)]);
+
+        // Dropdowns are now populated — finish restoring saved state into them.
         restoreFilters();
-        await loadMovies();
+        updateFilterHighlights();
     });
 </script>
 {% endblock %}

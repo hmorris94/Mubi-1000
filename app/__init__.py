@@ -7,5 +7,6 @@ from .blueprint import create_blueprint
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # 1 year; cache-busted via ?v=<mtime>
 Compress(app)
 app.register_blueprint(create_blueprint(), url_prefix="/")

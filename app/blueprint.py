@@ -4,7 +4,7 @@ import re
 import random
 from pathlib import Path
 from collections import Counter
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify, request, url_for
 from .data_manager import DataManager
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -255,6 +255,17 @@ def create_blueprint(name="mubi", config=None):
     bp = Blueprint(name, __name__,
                    template_folder="templates",
                    static_folder="static")
+
+    _static_folder = Path(__file__).parent / "static"
+
+    @bp.app_template_global()
+    def static_url(filename):
+        """Return a static file URL with an mtime-based cache-bust query param."""
+        try:
+            mtime = int((_static_folder / filename).stat().st_mtime)
+        except OSError:
+            mtime = 0
+        return url_for(f"{bp.name}.static", filename=filename) + f"?v={mtime}"
 
     cache = MovieCache(cfg["data_dir"])
     data_manager = DataManager(cfg["data_dir"])

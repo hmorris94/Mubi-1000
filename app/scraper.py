@@ -7,7 +7,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
-import csv
 import os
 from pathlib import Path
 
@@ -266,16 +265,6 @@ class MubiScraper:
                     return False
         return True
 
-    def _write_csv(self, path):
-        """Write movies to CSV using built-in csv module."""
-        if not self.movies:
-            return
-        fieldnames = self.movies[0].keys()
-        with open(path, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(self.movies)
-
     def save_data(self, filename=None):
         if not self.movies:
             print("No movies to save")
@@ -303,20 +292,13 @@ class MubiScraper:
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(self.movies, f, ensure_ascii=False, indent=2)
 
-        csv_file = DATA_DIR / f"{filename}.csv"
-        self._write_csv(csv_file)
-
-        latest_csv = DATA_DIR / "latest.csv"
-
         with open(latest_json, 'w', encoding='utf-8') as f:
             json.dump(self.movies, f, ensure_ascii=False, indent=2)
 
-        self._write_csv(latest_csv)
+        print(f"Data saved to {json_file}")
+        print(f"Latest data saved to {latest_json}")
 
-        print(f"Data saved to {json_file} and {csv_file}")
-        print(f"Latest data saved to {latest_json} and {latest_csv}")
-
-        return str(json_file), str(csv_file)
+        return str(json_file)
 
 if __name__ == "__main__":
     import argparse
